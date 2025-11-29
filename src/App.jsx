@@ -67,7 +67,7 @@ export default function App() {
   };
 
   // ---------------------------
-  //   AUTO CAMBIO DE PESTAÑA — ZONA AMPLIA
+  //   AUTO CAMBIO DE PESTAÑA CON 25% SAFE ZONE
   // ---------------------------
   const handleDragUpdate = (update) => {
     if (!update.clientSelection) return;
@@ -75,19 +75,19 @@ export default function App() {
     const x = update.clientSelection.x;
     const width = window.innerWidth;
 
-    const leftZone = width * 0.40;   // zona izquierda más amplia
-    const rightZone = width * 0.60;  // zona derecha más amplia
+    const safeLeft = width * 0.25;
+    const safeRight = width * 0.75;
 
-    // --- CAMBIO HACIA DERECHA ---
-    if (x > rightZone) {
-      if (activeTab === "todo") setActiveTab("proceso");
-      else if (activeTab === "proceso") setActiveTab("delegadas");
-    }
-
-    // --- CAMBIO HACIA IZQUIERDA ---
-    if (x < leftZone) {
+    // --- CAMBIO A LA IZQUIERDA ---
+    if (x < safeLeft) {
       if (activeTab === "delegadas") setActiveTab("proceso");
       else if (activeTab === "proceso") setActiveTab("todo");
+    }
+
+    // --- CAMBIO A LA DERECHA ---
+    if (x > safeRight) {
+      if (activeTab === "todo") setActiveTab("proceso");
+      else if (activeTab === "proceso") setActiveTab("delegadas");
     }
   };
 
@@ -100,7 +100,7 @@ export default function App() {
     if (!destination) return;
 
     const startCol = source.droppableId;
-    const endCol = activeTab; // destino real según pestaña activa
+    const endCol = activeTab; // destino según pestaña activa
 
     // MISMA COLUMNA → reordenar
     if (startCol === endCol) {
@@ -263,7 +263,7 @@ export default function App() {
         </button>
       </div>
 
-      {/* Solo se monta la columna activa */}
+      {/* Solo se muestra la columna activa */}
       <DragDropContext
         onDragEnd={handleDragEnd}
         onDragUpdate={handleDragUpdate}
