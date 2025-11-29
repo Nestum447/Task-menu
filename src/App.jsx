@@ -67,7 +67,7 @@ export default function App() {
   };
 
   // ---------------------------
-  //   AUTO CAMBIO DE PESTAÑA
+  //   AUTO CAMBIO DE PESTAÑA — ZONA AMPLIA
   // ---------------------------
   const handleDragUpdate = (update) => {
     if (!update.clientSelection) return;
@@ -75,12 +75,17 @@ export default function App() {
     const x = update.clientSelection.x;
     const width = window.innerWidth;
 
-    if (x > width * 0.75) {
+    const leftZone = width * 0.40;   // zona izquierda más amplia
+    const rightZone = width * 0.60;  // zona derecha más amplia
+
+    // --- CAMBIO HACIA DERECHA ---
+    if (x > rightZone) {
       if (activeTab === "todo") setActiveTab("proceso");
       else if (activeTab === "proceso") setActiveTab("delegadas");
     }
 
-    if (x < width * 0.25) {
+    // --- CAMBIO HACIA IZQUIERDA ---
+    if (x < leftZone) {
       if (activeTab === "delegadas") setActiveTab("proceso");
       else if (activeTab === "proceso") setActiveTab("todo");
     }
@@ -95,7 +100,7 @@ export default function App() {
     if (!destination) return;
 
     const startCol = source.droppableId;
-    const endCol = activeTab; // <<=== destino real según pestaña activa
+    const endCol = activeTab; // destino real según pestaña activa
 
     // MISMA COLUMNA → reordenar
     if (startCol === endCol) {
@@ -284,4 +289,4 @@ export default function App() {
       </DragDropContext>
     </div>
   );
-    }
+}
