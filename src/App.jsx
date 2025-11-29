@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
 export default function App() {
-
   // ---------------------------
   //   LOCAL STORAGE: CARGAR
   // ---------------------------
@@ -31,6 +30,9 @@ export default function App() {
 
   const [newTask, setNewTask] = useState("");
 
+  // pestaña activa
+  const [activeTab, setActiveTab] = useState("todo");
+
   // ---------------------------
   //   LOCAL STORAGE: GUARDAR
   // ---------------------------
@@ -52,7 +54,7 @@ export default function App() {
   };
 
   // ---------------------------
-  //   MARCAR / DESMARCAR COMPLETADA
+  //   MARCAR COMPLETADA
   // ---------------------------
   const toggleComplete = (id) => {
     setTasks((prev) => {
@@ -67,16 +69,15 @@ export default function App() {
   };
 
   // ---------------------------
-  //   DRAG & DROP (CORREGIDO)
+  //   DRAG & DROP
   // ---------------------------
   const handleDragEnd = (result) => {
     const sourceColumn = result.source.droppableId;
-
     if (!result.destination) {
       setTasks((prev) => ({
         ...prev,
         [sourceColumn]: prev[sourceColumn].filter(
-          (t, index) => index !== result.source.index
+          (_, index) => index !== result.source.index
         ),
       }));
       return;
@@ -84,27 +85,22 @@ export default function App() {
 
     const destColumn = result.destination.droppableId;
 
-    // 🟦 REORDENAR SIN DUPLICAR SI ES LA MISMA COLUMNA
     if (sourceColumn === destColumn) {
       const columnTasks = Array.from(tasks[sourceColumn]);
-
-      const [movedTask] = columnTasks.splice(result.source.index, 1);
-      columnTasks.splice(result.destination.index, 0, movedTask);
+      const [moved] = columnTasks.splice(result.source.index, 1);
+      columnTasks.splice(result.destination.index, 0, moved);
 
       setTasks({
         ...tasks,
         [sourceColumn]: columnTasks,
       });
-
       return;
     }
 
-    // 🟩 SI ES ENTRE COLUMNAS → MOVER NORMAL
     const sourceTasks = Array.from(tasks[sourceColumn]);
     const destTasks = Array.from(tasks[destColumn]);
-
-    const [movedTask] = sourceTasks.splice(result.source.index, 1);
-    destTasks.splice(result.destination.index, 0, movedTask);
+    const [moved] = sourceTasks.splice(result.source.index, 1);
+    destTasks.splice(result.destination.index, 0, moved);
 
     setTasks({
       ...tasks,
@@ -131,6 +127,64 @@ export default function App() {
   };
 
   // ---------------------------
+  //   RENDERIZAR COLUMNA
+  // ---------------------------
+  const renderColumn = (key, title, color, bgColor) => (
+    <Droppable droppableId={key}>
+      {(provided) => (
+        <div
+          className="bg-white p-4 rounded shadow min-h-[300px]"
+          ref={provided.innerRef}
+          {...provided.droppableProps}
+        >
+          <h2 className={`text-xl font-semibold mb-3 ${color}`}>{title}</h2>
+
+          {tasks[key].map((task, index) => (
+            <Draggable key={task.id} draggableId={task.id} index={index}>
+              {(provided) => (
+                <div
+                  className={`flex items-center justify-between p-3 rounded mb-2 shadow cursor-grab active:cursor-grabbing ${bgColor}`}
+                  ref={provided.innerRef}
+                  {...provided.draggableProps}
+                  {...provided.dragHandleProps}
+                >
+                  <input
+                    type="checkbox"
+                    checked={task.completed}
+                    onChange={() => toggleComplete(task.id)}
+                    className="mr-2"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+
+                  <span
+                    className={
+                      task.completed ? "line-through text-gray-600" : ""
+                    }
+                  >
+                    {task.text}
+                  </span>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteTask(task.id);
+                    }}
+                    className="text-red-600 text-xl ml-2"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              )}
+            </Draggable>
+          ))}
+
+          {provided.placeholder}
+        </div>
+      )}
+    </Droppable>
+  );
+
+  // ---------------------------
   //   UI
   // ---------------------------
   return (
@@ -154,164 +208,48 @@ export default function App() {
         </button>
       </div>
 
+      {/* Pestañas */}
+      <div className="flex justify-center gap-2 mb-5">
+        <button
+          className={`px-4 py-2 rounded ${
+            activeTab === "todo"
+              ? "bg-blue-600 text-white"
+              : "bg-white shadow"
+          }`}
+          onClick={() => setActiveTab("todo")}
+        >
+          To Do
+        </button>
+        <button
+          className={`px-4 py-2 rounded ${
+            activeTab === "proceso"
+              ? "bg-yellow-600 text-white"
+              : "bg-white shadow"
+          }`}
+          onClick={() => setActiveTab("proceso")}
+        >
+          En Proceso
+        </button>
+        <button
+          className={`px-4 py-2 rounded ${
+            activeTab === "delegadas"
+              ? "bg-green-700 text-white"
+              : "bg-white shadow"
+          }`}
+          onClick={() => setActiveTab("delegadas")}
+        >
+          Delegadas
+        </button>
+      </div>
+
+      {/* LISTA SEGÚN PESTAÑA */}
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-          {/* Columna To Do */}
-          <Droppable droppableId="todo">
-            {(provided) => (
-              <div
-                className="bg-white p-4 rounded shadow min-h-[300px]"
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-              >
-                <h2 className="text-xl font-semibold mb-3 text-blue-700">To Do</h2>
-
-                {tasks.todo.map((task, index) => (
-                  <Draggable key={task.id} draggableId={task.id} index={index}>
-                    {(provided) => (
-                      <div
-                        className="flex items-center justify-between p-3 bg-blue-100 rounded mb-2 shadow cursor-grab active:cursor-grabbing"
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={task.completed}
-                          onChange={() => toggleComplete(task.id)}
-                          className="mr-2"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-
-                        <span className={task.completed ? "line-through text-gray-600" : ""}>
-                          {task.text}
-                        </span>
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteTask(task.id);
-                          }}
-                          className="text-red-600 text-xl ml-2"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    )}
-                  </Draggable>
-                ))}
-
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
-
-          {/* Columna Proceso */}
-          <Droppable droppableId="proceso">
-            {(provided) => (
-              <div
-                className="bg-white p-4 rounded shadow min-h-[300px]"
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-              >
-                <h2 className="text-xl font-semibold mb-3 text-yellow-600">
-                  En Proceso
-                </h2>
-
-                {tasks.proceso.map((task, index) => (
-                  <Draggable key={task.id} draggableId={task.id} index={index}>
-                    {(provided) => (
-                      <div
-                        className="flex items-center justify-between p-3 bg-yellow-100 rounded mb-2 shadow cursor-grab active:cursor-grabbing"
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={task.completed}
-                          onChange={() => toggleComplete(task.id)}
-                          className="mr-2"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-
-                        <span className={task.completed ? "line-through text-gray-600" : ""}>
-                          {task.text}
-                        </span>
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteTask(task.id);
-                          }}
-                          className="text-red-600 text-xl ml-2"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    )}
-                  </Draggable>
-                ))}
-
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
-
-          {/* Columna Delegadas */}
-          <Droppable droppableId="delegadas">
-            {(provided) => (
-              <div
-                className="bg-white p-4 rounded shadow min-h-[300px]"
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-              >
-                <h2 className="text-xl font-semibold mb-3 text-green-700">
-                  Delegadas
-                </h2>
-
-                {tasks.delegadas.map((task, index) => (
-                  <Draggable key={task.id} draggableId={task.id} index={index}>
-                    {(provided) => (
-                      <div
-                        className="flex items-center justify-between p-3 bg-green-100 rounded mb-2 shadow cursor-grab active:cursor-grabbing"
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={task.completed}
-                          onChange={() => toggleComplete(task.id)}
-                          className="mr-2"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-
-                        <span className={task.completed ? "line-through text-gray-600" : ""}>
-                          {task.text}
-                        </span>
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteTask(task.id);
-                          }}
-                          className="text-red-600 text-xl ml-2"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    )}
-                  </Draggable>
-                ))}
-
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
-
-        </div>
+        {activeTab === "todo" &&
+          renderColumn("todo", "To Do", "text-blue-700", "bg-blue-100")}
+        {activeTab === "proceso" &&
+          renderColumn("proceso", "En Proceso", "text-yellow-600", "bg-yellow-100")}
+        {activeTab === "delegadas" &&
+          renderColumn("delegadas", "Delegadas", "text-green-700", "bg-green-100")}
       </DragDropContext>
     </div>
   );
