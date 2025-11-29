@@ -30,6 +30,7 @@ export default function App() {
 
   const [newTask, setNewTask] = useState("");
   const [activeTab, setActiveTab] = useState("todo");
+  const [isDragging, setIsDragging] = useState(false);
 
   // ---------------------------
   //   LOCAL STORAGE: GUARDAR
@@ -67,27 +68,45 @@ export default function App() {
   };
 
   // ---------------------------
-  //   AUTO CAMBIO DE PESTAÑA CON 25% SAFE ZONE
+  //   AUTO CAMBIO DE PESTAÑA
+  //   (ahora usando zonas droppables laterales)
   // ---------------------------
-  const handleDragUpdate = (update) => {
-    if (!update.clientSelection) return;
+  const handleDragStart = () => setIsDragging(true);
+  const handleDragStop = () => setIsDragging(false);
 
+  const handleDragUpdate = (update) => {
+    // Preferimos usar destination droppableId si existe (lo más fiable)
+    const dest = update?.destination?.droppableId;
+    if (dest === "side-left") {
+      // cambiar a pestaña izquierda
+      if (activeTab === "delegadas") setActiveTab("proceso");
+      else if (activeTab === "proceso") setActiveTab("todo");
+      return;
+    } else if (dest === "side-right") {
+      // cambiar a pestaña derecha
+      if (activeTab === "todo") setActiveTab("proceso");
+      else if (activeTab === "proceso") setActiveTab("delegadas");
+      return;
+    }
+
+    // Fallback: si no hay destination, usamos clientSelection (por compatibilidad)
+    if (!update.clientSelection) return;
     const x = update.clientSelection.x;
     const width = window.innerWidth;
 
     const safeLeft = width * 0.25;
     const safeRight = width * 0.75;
 
-    // --- CAMBIO A LA IZQUIERDA ---
     if (x < safeLeft) {
       if (activeTab === "delegadas") setActiveTab("proceso");
       else if (activeTab === "proceso") setActiveTab("todo");
+      return;
     }
 
-    // --- CAMBIO A LA DERECHA ---
     if (x > safeRight) {
       if (activeTab === "todo") setActiveTab("proceso");
       else if (activeTab === "proceso") setActiveTab("delegadas");
+      return;
     }
   };
 
@@ -95,12 +114,20 @@ export default function App() {
   //   DRAG & DROP FINAL
   // ---------------------------
   const handleDragEnd = (result) => {
+    handleDragStop(); // asegurar que hide zones
     const { source, destination } = result;
 
     if (!destination) return;
 
     const startCol = source.droppableId;
-    const endCol = activeTab; // destino según pestaña activa
+    // Si el destino es una zona lateral, interpretamos destino como la pestaña activa actual
+    const destId =
+      destination.droppableId === "side-left" ||
+      destination.droppableId === "side-right"
+        ? activeTab
+        : destination.droppableId;
+
+    const endCol = destId;
 
     // MISMA COLUMNA → reordenar
     if (startCol === endCol) {
@@ -161,9 +188,11 @@ export default function App() {
 
           {tasks[key].map((task, index) => (
             <Draggable key={task.id} draggableId={task.id} index={index}>
-              {(provided) => (
+              {(provided, snapshot) => (
                 <div
-                  className={`flex items-center justify-between p-3 rounded mb-2 shadow cursor-grab active:cursor-grabbing ${bgColor}`}
+                  className={`flex items-center justify-between p-3 rounded mb-2 shadow cursor-grab active:cursor-grabbing ${bgColor} ${
+                    snapshot.isDragging ? "opacity-95" : ""
+                  }`}
                   ref={provided.innerRef}
                   {...provided.draggableProps}
                   {...provided.dragHandleProps}
@@ -208,7 +237,7 @@ export default function App() {
   //   UI
   // ---------------------------
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className="min-h-screen bg-gray-100 p-6 relative">
       <h1 className="text-3xl font-bold text-center mb-6">Gestor de Tareas</h1>
 
       {/* Input nueva tarea */}
@@ -230,7 +259,7 @@ export default function App() {
       </div>
 
       {/* Tabs */}
-      <div className="flex justify-center gap-2 mb-5">
+      <div className="flex justify-center gap-2 mb-5 relative z-10">
         <button
           className={`px-4 py-2 rounded ${
             activeTab === "todo" ? "bg-blue-600 text-white" : "bg-white shadow"
@@ -263,29 +292,67 @@ export default function App() {
         </button>
       </div>
 
-      {/* Solo se muestra la columna activa */}
       <DragDropContext
-        onDragEnd={handleDragEnd}
+        onDragStart={handleDragStart}
         onDragUpdate={handleDragUpdate}
+        onDragEnd={handleDragEnd}
+        onBeforeDragEnd={handleDragStop}
       >
-        {activeTab === "todo" &&
-          renderColumn("todo", "To Do", "text-blue-700", "bg-blue-100")}
+        {/* Overlay DROPPABLE ZONES (siempre montadas, ocupan 25% a cada lado) */}
+        { /* visibles solo cuando isDragging para no interferir con clicks */ }
+        {isDragging && (
+          <>
+            <Droppable droppableId="side-left">
+              {(provided, snapshot) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className={`absolute left-0 top-0 h-full w-1/4 z-20 pointer-events-auto transition-all ${
+                    snapshot.isDraggingOver ? "bg-blue-200/40" : "bg-transparent"
+                  }`}
+                >
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
 
-        {activeTab === "proceso" &&
-          renderColumn(
-            "proceso",
-            "En Proceso",
-            "text-yellow-600",
-            "bg-yellow-100"
-          )}
+            <Droppable droppableId="side-right">
+              {(provided, snapshot) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className={`absolute right-0 top-0 h-full w-1/4 z-20 pointer-events-auto transition-all ${
+                    snapshot.isDraggingOver ? "bg-blue-200/40" : "bg-transparent"
+                  }`}
+                >
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </>
+        )}
 
-        {activeTab === "delegadas" &&
-          renderColumn(
-            "delegadas",
-            "Delegadas",
-            "text-green-700",
-            "bg-green-100"
-          )}
+        {/* Solo se monta la columna activa */}
+        <div className="relative z-0">
+          {activeTab === "todo" &&
+            renderColumn("todo", "To Do", "text-blue-700", "bg-blue-100")}
+
+          {activeTab === "proceso" &&
+            renderColumn(
+              "proceso",
+              "En Proceso",
+              "text-yellow-600",
+              "bg-yellow-100"
+            )}
+
+          {activeTab === "delegadas" &&
+            renderColumn(
+              "delegadas",
+              "Delegadas",
+              "text-green-700",
+              "bg-green-100"
+            )}
+        </div>
       </DragDropContext>
     </div>
   );
