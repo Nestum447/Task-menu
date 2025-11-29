@@ -95,7 +95,7 @@ export default function App() {
     if (!destination) return;
 
     const startCol = source.droppableId;
-    const endCol = destination.droppableId;
+    const endCol = activeTab; // <<=== destino real según pestaña activa
 
     // MISMA COLUMNA → reordenar
     if (startCol === endCol) {
@@ -258,55 +258,30 @@ export default function App() {
         </button>
       </div>
 
+      {/* Solo se monta la columna activa */}
       <DragDropContext
         onDragEnd={handleDragEnd}
         onDragUpdate={handleDragUpdate}
       >
-        <div className="relative">
-          {/* TODO */}
-          <div
-            className={`transition-all duration-300 ${
-              activeTab === "todo"
-                ? "opacity-100 translate-x-0"
-                : "opacity-0 -translate-x-10 pointer-events-none absolute"
-            }`}
-          >
-            {renderColumn("todo", "To Do", "text-blue-700", "bg-blue-100")}
-          </div>
+        {activeTab === "todo" &&
+          renderColumn("todo", "To Do", "text-blue-700", "bg-blue-100")}
 
-          {/* PROCESO */}
-          <div
-            className={`transition-all duration-300 ${
-              activeTab === "proceso"
-                ? "opacity-100 translate-x-0"
-                : "opacity-0 translate-x-10 pointer-events-none absolute"
-            }`}
-          >
-            {renderColumn(
-              "proceso",
-              "En Proceso",
-              "text-yellow-600",
-              "bg-yellow-100"
-            )}
-          </div>
+        {activeTab === "proceso" &&
+          renderColumn(
+            "proceso",
+            "En Proceso",
+            "text-yellow-600",
+            "bg-yellow-100"
+          )}
 
-          {/* DELEGADAS */}
-          <div
-            className={`transition-all duration-300 ${
-              activeTab === "delegadas"
-                ? "opacity-100 translate-x-0"
-                : "opacity-0 translate-x-10 pointer-events-none absolute"
-            }`}
-          >
-            {renderColumn(
-              "delegadas",
-              "Delegadas",
-              "text-green-700",
-              "bg-green-100"
-            )}
-          </div>
-        </div>
+        {activeTab === "delegadas" &&
+          renderColumn(
+            "delegadas",
+            "Delegadas",
+            "text-green-700",
+            "bg-green-100"
+          )}
       </DragDropContext>
     </div>
   );
-      }
+}
