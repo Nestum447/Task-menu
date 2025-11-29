@@ -78,13 +78,11 @@ export default function App() {
     const x = update.clientSelection.x;
     const width = window.innerWidth;
 
-    // Derecha → pestaña siguiente
     if (x > width * 0.75) {
       if (activeTab === "todo") setActiveTab("proceso");
       else if (activeTab === "proceso") setActiveTab("delegadas");
     }
 
-    // Izquierda → pestaña anterior
     if (x < width * 0.25) {
       if (activeTab === "delegadas") setActiveTab("proceso");
       else if (activeTab === "proceso") setActiveTab("todo");
@@ -92,52 +90,46 @@ export default function App() {
   };
 
   // ---------------------------
-  //   DRAG & DROP FINAL
+  //   DRAG & DROP FINAL (CORREGIDO)
   // ---------------------------
   const handleDragEnd = (result) => {
-    const sourceColumn = result.source.droppableId;
+    const { source, destination } = result;
 
-    if (!result.destination) {
+    // Si no hay destino, NO borrar nada
+    if (!destination) return;
+
+    const startCol = source.droppableId;
+    const endCol = destination.droppableId;
+
+    // MISMA COLUMNA → reordenar
+    if (startCol === endCol) {
+      const newList = Array.from(tasks[startCol]);
+      const [moved] = newList.splice(source.index, 1);
+      newList.splice(destination.index, 0, moved);
+
       setTasks((prev) => ({
         ...prev,
-        [sourceColumn]: prev[sourceColumn].filter(
-          (_, index) => index !== result.source.index
-        ),
+        [startCol]: newList,
       }));
       return;
     }
 
-    const destColumn = result.destination.droppableId;
-
-    // MISMA COLUMNA → reordenar
-    if (sourceColumn === destColumn) {
-      const items = Array.from(tasks[sourceColumn]);
-      const [moved] = items.splice(result.source.index, 1);
-      items.splice(result.destination.index, 0, moved);
-
-      setTasks({
-        ...tasks,
-        [sourceColumn]: items,
-      });
-      return;
-    }
-
     // ENTRE COLUMNAS
-    const sourceItems = Array.from(tasks[sourceColumn]);
-    const destItems = Array.from(tasks[destColumn]);
+    const startList = Array.from(tasks[startCol]);
+    const endList = Array.from(tasks[endCol]);
 
-    const [moved] = sourceItems.splice(result.source.index, 1);
-    destItems.splice(result.destination.index, 0, moved);
+    const [moved] = startList.splice(source.index, 1);
+    endList.splice(destination.index, 0, moved);
 
-    setTasks({
-      ...tasks,
-      [sourceColumn]: sourceItems,
-      [destColumn]: destItems,
-    });
+    setTasks((prev) => ({
+      ...prev,
+      [startCol]: startList,
+      [endCol]: endList,
+    }));
   };
 
   // ---------------------------
-  //   AGREGAR TAREA
+  -//   AGREGAR TAREA
   // ---------------------------
   const addTask = () => {
     if (!newTask.trim()) return;
@@ -145,10 +137,10 @@ export default function App() {
     const newId = Date.now().toString();
     const item = { id: newId, text: newTask, completed: false };
 
-    setTasks({
-      ...tasks,
-      todo: [...tasks.todo, item],
-    });
+    setTasks((prev) => ({
+      ...prev,
+      todo: [...prev.todo, item],
+    }));
 
     setNewTask("");
   };
@@ -259,11 +251,10 @@ export default function App() {
         </button>
       </div>
 
-      {/* CONTENIDO ANIMADO DE LAS COLUMNAS */}
+      {/* CONTENIDO ANIMADO */}
       <DragDropContext onDragEnd={handleDragEnd} onDragUpdate={handleDragUpdate}>
         <div className="relative">
 
-          {/* TO DO */}
           <div
             className={`
               transition-all duration-300
@@ -275,7 +266,6 @@ export default function App() {
             {renderColumn("todo", "To Do", "text-blue-700", "bg-blue-100")}
           </div>
 
-          {/* PROCESO */}
           <div
             className={`
               transition-all duration-300
@@ -287,7 +277,6 @@ export default function App() {
             {renderColumn("proceso", "En Proceso", "text-yellow-600", "bg-yellow-100")}
           </div>
 
-          {/* DELEGADAS */}
           <div
             className={`
               transition-all duration-300
