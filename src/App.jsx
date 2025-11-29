@@ -1,9 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export default function App() {
-  // -----------------------------
-  //     CARGAR LOCAL STORAGE
-  // -----------------------------
   const loadTasks = () => {
     const saved = localStorage.getItem("tasks-board");
     if (!saved) return null;
@@ -27,18 +24,11 @@ export default function App() {
 
   const [newTask, setNewTask] = useState("");
   const [activeTab, setActiveTab] = useState("todo");
-  const [dragging, setDragging] = useState(null);
 
-  // -----------------------------
-  //     GUARDAR LOCAL STORAGE
-  // -----------------------------
   useEffect(() => {
     localStorage.setItem("tasks-board", JSON.stringify(tasks));
   }, [tasks]);
 
-  // -----------------------------
-  //     BORRAR TAREA
-  // -----------------------------
   const deleteTask = (id) => {
     setTasks((prev) => {
       const newState = { ...prev };
@@ -49,9 +39,6 @@ export default function App() {
     });
   };
 
-  // -----------------------------
-  //     COMPLETAR TAREA
-  // -----------------------------
   const toggleComplete = (id) => {
     setTasks((prev) => {
       const newState = { ...prev };
@@ -64,66 +51,61 @@ export default function App() {
     });
   };
 
-  // -----------------------------
-  //     DRAG & DROP
-  // -----------------------------
-  const onDragStart = (task, sourceCol) => {
-    setDragging({ task, sourceCol });
-  };
+  const columns = ["todo", "proceso", "delegadas"];
 
-  const onDrop = (destCol) => {
-    if (!dragging) return;
+  const moveTask = (task, fromCol, direction) => {
+    const currentIndex = columns.indexOf(fromCol);
+    let targetIndex = currentIndex + direction;
+    if (targetIndex < 0 || targetIndex >= columns.length) return;
 
+    const targetCol = columns[targetIndex];
     setTasks((prev) => {
       const newState = { ...prev };
-      // quitar de origen
-      newState[dragging.sourceCol] = newState[dragging.sourceCol].filter(
-        (t) => t.id !== dragging.task.id
-      );
-      // agregar a destino
-      newState[destCol] = [...newState[destCol], dragging.task];
+      newState[fromCol] = newState[fromCol].filter((t) => t.id !== task.id);
+      newState[targetCol] = [...newState[targetCol], task];
       return newState;
     });
-
-    setDragging(null);
   };
 
-  // -----------------------------
-  //     RENDER COLUMNA
-  // -----------------------------
-  const renderColumn = (key, title, color) => (
-    <div
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={() => onDrop(key)}
-      className="bg-white p-4 rounded shadow min-h-[300px] flex-1"
-    >
-      <h2 className={`text-xl font-semibold mb-3 ${color}`}>{title}</h2>
-      {tasks[key].map((task) => (
-        <div
-          key={task.id}
-          draggable
-          onDragStart={() => onDragStart(task, key)}
-          className={`flex items-center justify-between p-3 mb-2 rounded shadow cursor-grab ${
-            task.completed ? "bg-gray-200 line-through" : "bg-gray-100"
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={task.completed}
-              onChange={() => toggleComplete(task.id)}
-            />
-            <span>{task.text}</span>
-          </div>
+  const renderTask = (task, col) => {
+    const touchStartX = useRef(0);
 
-          <button
-            onClick={() => deleteTask(task.id)}
-            className="w-7 h-7 flex items-center justify-center bg-red-600 text-white rounded-full text-lg ml-2"
-          >
-            ×
-          </button>
+    return (
+      <div
+        key={task.id}
+        className={`flex items-center justify-between p-3 mb-2 rounded shadow cursor-pointer ${
+          task.completed ? "bg-gray-200 line-through" : "bg-gray-100"
+        }`}
+        onTouchStart={(e) => (touchStartX.current = e.touches[0].clientX)}
+        onTouchEnd={(e) => {
+          const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+          if (deltaX > 50) moveTask(task, col, 1); // swipe derecha
+          else if (deltaX < -50) moveTask(task, col, -1); // swipe izquierda
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={task.completed}
+            onChange={() => toggleComplete(task.id)}
+          />
+          <span>{task.text}</span>
         </div>
-      ))}
+
+        <button
+          onClick={() => deleteTask(task.id)}
+          className="w-7 h-7 flex items-center justify-center bg-red-600 text-white rounded-full text-lg ml-2"
+        >
+          ×
+        </button>
+      </div>
+    );
+  };
+
+  const renderColumn = (key, title, color) => (
+    <div className="bg-white p-4 rounded shadow min-h-[300px] flex-1">
+      <h2 className={`text-xl font-semibold mb-3 ${color}`}>{title}</h2>
+      {tasks[key].map((task) => renderTask(task, key))}
     </div>
   );
 
@@ -131,8 +113,7 @@ export default function App() {
     <div className="min-h-screen bg-gray-100 p-6">
       <h1 className="text-3xl font-bold text-center mb-6">Gestor de Tareas</h1>
 
-      {/* INPUT NUEVA TAREA */}
-      <div className="flex justify-center mb-6 gap-2 flex-wrap">
+      <div className="flex justify-center mb-6 gap-2">
         <input
           type="text"
           className="border border-gray-400 rounded p-2 w-64"
@@ -157,47 +138,26 @@ export default function App() {
         </button>
       </div>
 
-      {/* TABS (MOVIL) */}
-      <div className="flex justify-center gap-2 mb-5 md:hidden">
-        {["todo", "proceso", "delegadas"].map((tab) => (
+      <div className="flex justify-center gap-2 mb-5">
+        {columns.map((col) => (
           <button
-            key={tab}
+            key={col}
             className={`px-4 py-2 rounded ${
-              activeTab === tab ? "bg-blue-600 text-white" : "bg-white shadow"
+              activeTab === col ? "bg-blue-600 text-white" : "bg-white shadow"
             }`}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => setActiveTab(col)}
           >
-            {tab === "todo"
+            {col === "todo"
               ? "To Do"
-              : tab === "proceso"
+              : col === "proceso"
               ? "En Proceso"
               : "Delegadas"}
           </button>
         ))}
       </div>
 
-      {/* COLUMNAS */}
       <div className="flex gap-4 flex-wrap">
-        {/* Desktop: mostrar todas */}
-        <div className="hidden md:flex w-full gap-4">
-          {renderColumn("todo", "To Do", "text-blue-700")}
-          {renderColumn("proceso", "En Proceso", "text-yellow-600")}
-          {renderColumn("delegadas", "Delegadas", "text-green-700")}
-        </div>
-
-        {/* Móvil: solo la columna activa */}
-        <div className="md:hidden w-full">{renderColumn(activeTab,
-          activeTab === "todo"
-            ? "To Do"
-            : activeTab === "proceso"
-            ? "En Proceso"
-            : "Delegadas",
-          activeTab === "todo"
-            ? "text-blue-700"
-            : activeTab === "proceso"
-            ? "text-yellow-600"
-            : "text-green-700"
-        )}</div>
+        {renderColumn(activeTab, activeTab === "todo" ? "To Do" : activeTab === "proceso" ? "En Proceso" : "Delegadas", "text-blue-700")}
       </div>
     </div>
   );
