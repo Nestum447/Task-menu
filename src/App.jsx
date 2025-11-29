@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
 export default function App() {
+
   // ---------------------------
   //   LOCAL STORAGE: CARGAR
   // ---------------------------
@@ -41,7 +42,7 @@ export default function App() {
   }, [tasks]);
 
   // ---------------------------
-  //   BORRAR TAREA (CANASTA)
+  //   BORRAR TAREA
   // ---------------------------
   const deleteTask = (id) => {
     setTasks((prev) => {
@@ -69,10 +70,33 @@ export default function App() {
   };
 
   // ---------------------------
-  //   DRAG & DROP
+  //   AUTO-CAMBIO DE PESTAÑA AL ARRASTRAR
+  // ---------------------------
+  const handleDragUpdate = (update) => {
+    if (!update.clientSelection) return;
+
+    const x = update.clientSelection.x;
+    const width = window.innerWidth;
+
+    // Derecha → pestaña siguiente
+    if (x > width * 0.75) {
+      if (activeTab === "todo") setActiveTab("proceso");
+      else if (activeTab === "proceso") setActiveTab("delegadas");
+    }
+
+    // Izquierda → pestaña anterior
+    if (x < width * 0.25) {
+      if (activeTab === "delegadas") setActiveTab("proceso");
+      else if (activeTab === "proceso") setActiveTab("todo");
+    }
+  };
+
+  // ---------------------------
+  //   DRAG & DROP FINAL
   // ---------------------------
   const handleDragEnd = (result) => {
     const sourceColumn = result.source.droppableId;
+
     if (!result.destination) {
       setTasks((prev) => ({
         ...prev,
@@ -85,27 +109,30 @@ export default function App() {
 
     const destColumn = result.destination.droppableId;
 
+    // MISMA COLUMNA → reordenar
     if (sourceColumn === destColumn) {
-      const columnTasks = Array.from(tasks[sourceColumn]);
-      const [moved] = columnTasks.splice(result.source.index, 1);
-      columnTasks.splice(result.destination.index, 0, moved);
+      const items = Array.from(tasks[sourceColumn]);
+      const [moved] = items.splice(result.source.index, 1);
+      items.splice(result.destination.index, 0, moved);
 
       setTasks({
         ...tasks,
-        [sourceColumn]: columnTasks,
+        [sourceColumn]: items,
       });
       return;
     }
 
-    const sourceTasks = Array.from(tasks[sourceColumn]);
-    const destTasks = Array.from(tasks[destColumn]);
-    const [moved] = sourceTasks.splice(result.source.index, 1);
-    destTasks.splice(result.destination.index, 0, moved);
+    // ENTRE COLUMNAS
+    const sourceItems = Array.from(tasks[sourceColumn]);
+    const destItems = Array.from(tasks[destColumn]);
+
+    const [moved] = sourceItems.splice(result.source.index, 1);
+    destItems.splice(result.destination.index, 0, moved);
 
     setTasks({
       ...tasks,
-      [sourceColumn]: sourceTasks,
-      [destColumn]: destTasks,
+      [sourceColumn]: sourceItems,
+      [destColumn]: destItems,
     });
   };
 
@@ -116,18 +143,18 @@ export default function App() {
     if (!newTask.trim()) return;
 
     const newId = Date.now().toString();
-    const newItem = { id: newId, text: newTask, completed: false };
+    const item = { id: newId, text: newTask, completed: false };
 
     setTasks({
       ...tasks,
-      todo: [...tasks.todo, newItem],
+      todo: [...tasks.todo, item],
     });
 
     setNewTask("");
   };
 
   // ---------------------------
-  //   RENDERIZAR COLUMNA
+  //   RENDER COLUMNA
   // ---------------------------
   const renderColumn = (key, title, color, bgColor) => (
     <Droppable droppableId={key}>
@@ -156,11 +183,7 @@ export default function App() {
                     onClick={(e) => e.stopPropagation()}
                   />
 
-                  <span
-                    className={
-                      task.completed ? "line-through text-gray-600" : ""
-                    }
-                  >
+                  <span className={task.completed ? "line-through text-gray-600" : ""}>
                     {task.text}
                   </span>
 
@@ -191,7 +214,7 @@ export default function App() {
     <div className="min-h-screen bg-gray-100 p-6">
       <h1 className="text-3xl font-bold text-center mb-6">Gestor de Tareas</h1>
 
-      {/* Input para nueva tarea */}
+      {/* Input nueva tarea */}
       <div className="flex justify-center mb-6 gap-2">
         <input
           type="text"
@@ -200,10 +223,8 @@ export default function App() {
           value={newTask}
           onChange={(e) => setNewTask(e.target.value)}
         />
-        <button
-          onClick={addTask}
-          className="bg-blue-600 text-white px-4 py-2 rounded"
-        >
+
+        <button onClick={addTask} className="bg-blue-600 text-white px-4 py-2 rounded">
           Agregar
         </button>
       </div>
@@ -212,29 +233,25 @@ export default function App() {
       <div className="flex justify-center gap-2 mb-5">
         <button
           className={`px-4 py-2 rounded ${
-            activeTab === "todo"
-              ? "bg-blue-600 text-white"
-              : "bg-white shadow"
+            activeTab === "todo" ? "bg-blue-600 text-white" : "bg-white shadow"
           }`}
           onClick={() => setActiveTab("todo")}
         >
           To Do
         </button>
+
         <button
           className={`px-4 py-2 rounded ${
-            activeTab === "proceso"
-              ? "bg-yellow-600 text-white"
-              : "bg-white shadow"
+            activeTab === "proceso" ? "bg-yellow-600 text-white" : "bg-white shadow"
           }`}
           onClick={() => setActiveTab("proceso")}
         >
           En Proceso
         </button>
+
         <button
           className={`px-4 py-2 rounded ${
-            activeTab === "delegadas"
-              ? "bg-green-700 text-white"
-              : "bg-white shadow"
+            activeTab === "delegadas" ? "bg-green-700 text-white" : "bg-white shadow"
           }`}
           onClick={() => setActiveTab("delegadas")}
         >
@@ -242,14 +259,47 @@ export default function App() {
         </button>
       </div>
 
-      {/* LISTA SEGÚN PESTAÑA */}
-      <DragDropContext onDragEnd={handleDragEnd}>
-        {activeTab === "todo" &&
-          renderColumn("todo", "To Do", "text-blue-700", "bg-blue-100")}
-        {activeTab === "proceso" &&
-          renderColumn("proceso", "En Proceso", "text-yellow-600", "bg-yellow-100")}
-        {activeTab === "delegadas" &&
-          renderColumn("delegadas", "Delegadas", "text-green-700", "bg-green-100")}
+      {/* CONTENIDO ANIMADO DE LAS COLUMNAS */}
+      <DragDropContext onDragEnd={handleDragEnd} onDragUpdate={handleDragUpdate}>
+        <div className="relative">
+
+          {/* TO DO */}
+          <div
+            className={`
+              transition-all duration-300
+              ${activeTab === "todo"
+                ? "opacity-100 translate-x-0"
+                : "opacity-0 -translate-x-10 pointer-events-none absolute"}
+            `}
+          >
+            {renderColumn("todo", "To Do", "text-blue-700", "bg-blue-100")}
+          </div>
+
+          {/* PROCESO */}
+          <div
+            className={`
+              transition-all duration-300
+              ${activeTab === "proceso"
+                ? "opacity-100 translate-x-0"
+                : "opacity-0 translate-x-10 pointer-events-none absolute"}
+            `}
+          >
+            {renderColumn("proceso", "En Proceso", "text-yellow-600", "bg-yellow-100")}
+          </div>
+
+          {/* DELEGADAS */}
+          <div
+            className={`
+              transition-all duration-300
+              ${activeTab === "delegadas"
+                ? "opacity-100 translate-x-0"
+                : "opacity-0 translate-x-10 pointer-events-none absolute"}
+            `}
+          >
+            {renderColumn("delegadas", "Delegadas", "text-green-700", "bg-green-100")}
+          </div>
+
+        </div>
       </DragDropContext>
     </div>
   );
