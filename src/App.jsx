@@ -132,7 +132,7 @@ export default function App() {
       <h1 className="text-3xl font-bold text-center mb-6">Gestor de Tareas</h1>
 
       {/* INPUT NUEVA TAREA */}
-      <div className="flex justify-center mb-6 gap-2">
+      <div className="flex justify-center mb-6 gap-2 flex-wrap">
         <input
           type="text"
           className="border border-gray-400 rounded p-2 w-64"
@@ -157,11 +157,47 @@ export default function App() {
         </button>
       </div>
 
+      {/* TABS (MOVIL) */}
+      <div className="flex justify-center gap-2 mb-5 md:hidden">
+        {["todo", "proceso", "delegadas"].map((tab) => (
+          <button
+            key={tab}
+            className={`px-4 py-2 rounded ${
+              activeTab === tab ? "bg-blue-600 text-white" : "bg-white shadow"
+            }`}
+            onClick={() => setActiveTab(tab)}
+          >
+            {tab === "todo"
+              ? "To Do"
+              : tab === "proceso"
+              ? "En Proceso"
+              : "Delegadas"}
+          </button>
+        ))}
+      </div>
+
       {/* COLUMNAS */}
       <div className="flex gap-4 flex-wrap">
-        {renderColumn("todo", "To Do", "text-blue-700")}
-        {renderColumn("proceso", "En Proceso", "text-yellow-600")}
-        {renderColumn("delegadas", "Delegadas", "text-green-700")}
+        {/* Desktop: mostrar todas */}
+        <div className="hidden md:flex w-full gap-4">
+          {renderColumn("todo", "To Do", "text-blue-700")}
+          {renderColumn("proceso", "En Proceso", "text-yellow-600")}
+          {renderColumn("delegadas", "Delegadas", "text-green-700")}
+        </div>
+
+        {/* Móvil: solo la columna activa */}
+        <div className="md:hidden w-full">{renderColumn(activeTab,
+          activeTab === "todo"
+            ? "To Do"
+            : activeTab === "proceso"
+            ? "En Proceso"
+            : "Delegadas",
+          activeTab === "todo"
+            ? "text-blue-700"
+            : activeTab === "proceso"
+            ? "text-yellow-600"
+            : "text-green-700"
+        )}</div>
       </div>
     </div>
   );
