@@ -94,7 +94,6 @@ export default function App() {
 
   const onDragMove = (e) => {
     if (!e.delta) return;
-
     const clientX = e.active.rect.current.translated?.left;
     if (clientX) handleAutoTab(clientX);
   };
@@ -163,7 +162,7 @@ export default function App() {
           {task.text}
         </span>
 
-        {/* BOTÓN DE BORRAR QUE SE VE EN TELÉFONOS PEQUEÑOS */}
+        {/* Botón visible en pantallas pequeñas */}
         <button
           onClick={() => deleteTask(task.id)}
           className="w-7 h-7 flex items-center justify-center bg-red-600 text-white rounded-full text-lg ml-2"
@@ -249,3 +248,49 @@ export default function App() {
 
         <button
           className={`px-4 py-2 rounded ${
+            activeTab === "delegadas"
+              ? "bg-green-600 text-white"
+              : "bg-white shadow"
+          }`}
+          onClick={() => setActiveTab("delegadas")}
+        >
+          Delegadas
+        </button>
+      </div>
+
+      {/* ÁREA DE DRAG AND DROP */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={onDragStart}
+        onDragMove={onDragMove}
+        onDragEnd={onDragEnd}
+      >
+        {activeTab === "todo" &&
+          renderColumn("todo", "To Do", "text-blue-600", "bg-blue-100")}
+        {activeTab === "proceso" &&
+          renderColumn(
+            "proceso",
+            "En Proceso",
+            "text-yellow-600",
+            "bg-yellow-100"
+          )}
+        {activeTab === "delegadas" &&
+          renderColumn(
+            "delegadas",
+            "Delegadas",
+            "text-green-600",
+            "bg-green-100"
+          )}
+
+        <DragOverlay>
+          {draggingItem ? (
+            <div className="p-3 rounded shadow bg-gray-200">
+              {draggingItem.text}
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+    </div>
+  );
+}
